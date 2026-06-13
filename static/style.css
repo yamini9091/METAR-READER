@@ -457,16 +457,32 @@ body {
 
 .airport-btn {
     flex: 1;
-    min-width: 70px;
-    padding: 10px 12px;
+    min-width: 100px;
+    padding: 12px 10px;
     background: white;
     border: 2px solid var(--gray-300);
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--accent);
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    text-align: center;
+}
+
+.airport-btn .code {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.airport-btn .city {
+    font-size: 10px;
+    color: var(--gray-500);
+    font-weight: 500;
 }
 
 .airport-btn:hover {
@@ -475,6 +491,10 @@ body {
     border-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.airport-btn:hover .city {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Footer */

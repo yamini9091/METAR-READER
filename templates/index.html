@@ -134,6 +134,9 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
+        // Airport details from backend
+        const airportDetails = {{ airports | tojson }};
+
         // Airport data organized by region and country
         const regions = {
             'North America': {
@@ -228,7 +231,10 @@
                 codes.forEach(code => {
                     const btn = document.createElement('button');
                     btn.className = 'airport-btn';
-                    btn.textContent = code;
+                    const airport = airportDetails[code];
+                    const city = airport ? airport.city : 'Unknown';
+                    btn.innerHTML = `<span class="code">${code}</span><span class="city">${city}</span>`;
+                    btn.title = `${code} - ${city}`;
                     btn.onclick = () => setAirport(code);
                     buttonsDiv.appendChild(btn);
                 });

@@ -20,7 +20,9 @@ def fetch_metar(airport_code):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    airport_data = {code: {'city': city, 'country': country}
+                   for code, (city, country, _) in AIRPORTS.items()}
+    return render_template('index.html', airports=airport_data)
 
 @app.route('/api/metar', methods=['POST'])
 def get_metar():
