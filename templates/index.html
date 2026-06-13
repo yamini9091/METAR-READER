@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global METAR Reader - Real-time Airport Weather</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page">
+        <!-- Navigation Header -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <h1>✈️ Global METAR Reader</h1>
+                    <p>Real-time airport weather from 100+ worldwide airports</p>
+                </div>
+            </div>
+        </nav>
+
+        <div class="main-container">
+            <!-- Search Section -->
+            <section class="search-section">
+                <div class="search-wrapper">
+                    <input
+                        type="text"
+                        id="airportInput"
+                        class="search-input"
+                        placeholder="Search airport code (e.g., KLAX, EGLL, RJTT, YSSY)"
+                        autocomplete="off"
+                        maxlength="4"
+                    >
+                    <button class="search-btn" onclick="fetchMETAR()">
+                        <span>Search</span>
+                    </button>
+                </div>
+                <div class="quick-access">
+                    <span>Quick access:</span>
+                    <button onclick="setAirport('KLAX')" class="quick-btn">KLAX</button>
+                    <button onclick="setAirport('EGLL')" class="quick-btn">EGLL</button>
+                    <button onclick="setAirport('RJTT')" class="quick-btn">RJTT</button>
+                    <button onclick="setAirport('YSSY')" class="quick-btn">YSSY</button>
+                </div>
+            </section>
+
+            <!-- Messages -->
+            <div id="error" class="alert alert-error" style="display: none;"></div>
+            <div id="loading" class="alert alert-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Fetching live weather data...</p>
+            </div>
+
+            <!-- Weather Report Section -->
+            <section id="result" class="weather-section" style="display: none;">
+                <!-- Airport Header -->
+                <div class="airport-header">
+                    <div class="airport-info">
+                        <h2 id="resultAirport" class="airport-code"></h2>
+                        <p id="resultCity" class="airport-city"></p>
+                    </div>
+                    <div class="airport-weather-icon">
+                        <span id="weatherIcon">🌤️</span>
+                    </div>
+                </div>
+
+                <!-- Main Weather Display -->
+                <div class="weather-display">
+                    <div class="weather-main">
+                        <div class="weather-item large">
+                            <label>Temperature</label>
+                            <div id="tempDisplay" class="value-large">--°C</div>
+                        </div>
+                        <div class="weather-item large">
+                            <label>Wind</label>
+                            <div id="windDisplay" class="value-large">--</div>
+                        </div>
+                        <div class="weather-item large">
+                            <label>Visibility</label>
+                            <div id="visibilityDisplay" class="value-large">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Breakdown -->
+                <div class="weather-breakdown">
+                    <h3>📊 Detailed Weather Breakdown</h3>
+                    <div id="detailedBreakdown" class="breakdown-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Detailed Report -->
+                <div class="detailed-report">
+                    <h3>📖 Detailed Weather Report</h3>
+                    <div id="readableText" class="report-text">
+                        Loading report...
+                    </div>
+                </div>
+
+                <!-- Raw METAR -->
+                <div class="raw-metar-section">
+                    <div class="raw-header">
+                        <h3>Raw METAR Data</h3>
+                        <span class="raw-label">For aviation professionals</span>
+                    </div>
+                    <code id="rawText" class="metar-code"></code>
+                </div>
+            </section>
+
+            <!-- Browser Section -->
+            <section class="browser-section">
+                <h2>🌍 Browse Airports by Region</h2>
+
+                <!-- Region Tabs -->
+                <div class="region-tabs">
+                    <button class="tab-btn active" onclick="showRegion(this, 'North America')">🇺🇸 N. America</button>
+                    <button class="tab-btn" onclick="showRegion(this, 'South America')">🇧🇷 S. America</button>
+                    <button class="tab-btn" onclick="showRegion(this, 'Europe')">🇬🇧 Europe</button>
+                    <button class="tab-btn" onclick="showRegion(this, 'Asia')">🇯🇵 Asia</button>
+                    <button class="tab-btn" onclick="showRegion(this, 'Africa')">🇿🇦 Africa</button>
+                    <button class="tab-btn" onclick="showRegion(this, 'Oceania')">🇦🇺 Oceania</button>
+                </div>
+
+                <!-- Airports Grid -->
+                <div id="airportContainer" class="airports-grid"></div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Real-time METAR data • 100+ major airports • 6 continents</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Airport data organized by region and country
+        const regions = {
+            'North America': {
+                'USA': ['KLAX', 'KJFK', 'KSFO', 'KORD', 'KDFW', 'KATL', 'KMIA', 'KSEA', 'KDEN', 'KLAS'],
+                'Canada': ['CYYZ', 'CYMX', 'CYVR', 'CYEG', 'CYC'],
+                'Mexico': ['MMMX', 'MMEX', 'MPMG', 'MRLP', 'MGES'],
+            },
+            'South America': {
+                'Brazil': ['SBGR', 'SBRJ'],
+                'Argentina': ['SABE'],
+                'Chile': ['SCEL'],
+                'Colombia': ['SKBO'],
+                'Peru': ['SEQT'],
+                'Venezuela': ['SVMD'],
+                'Paraguay': ['KSMD'],
+            },
+            'Europe': {
+                'UK': ['EGLL', 'EGPN', 'EGGW'],
+                'France': ['LFPG', 'LFPO'],
+                'Germany': ['EDDF', 'EDDM'],
+                'Spain': ['LEMD', 'LEIB'],
+                'Italy': ['LIRF', 'LIBD'],
+                'Austria': ['LOWW'],
+                'Switzerland': ['ZZZH'],
+                'Russia': ['UUWW', 'UUDD'],
+                'Czech Rep.': ['LKPR'],
+                'Poland': ['EPWA'],
+                'Croatia': ['LDZA'],
+                'Hungary': ['LHBP'],
+                'Greece': ['LGAV'],
+            },
+            'Asia': {
+                'Japan': ['RJTT', 'RJOO'],
+                'China': ['ZBAA', 'ZSPD', 'ZGSZ'],
+                'Hong Kong': ['VHHH'],
+                'Taiwan': ['RCTP'],
+                'S. Korea': ['RKSI'],
+                'Malaysia': ['WMKK'],
+                'Singapore': ['WSSS'],
+                'Thailand': ['VTBS'],
+                'Philippines': ['RPLL'],
+                'Indonesia': ['WIII'],
+                'India': ['VIDP', 'VABB', 'VOCC'],
+                'Pakistan': ['OPSF'],
+                'Bangladesh': ['OPBD'],
+                'UAE': ['OMDB'],
+                'Iraq': ['OKBK'],
+                'Iran': ['OIIE'],
+                'Jordan': ['OJAC'],
+            },
+            'Africa': {
+                'Egypt': ['HECA'],
+                'Algeria': ['DIAP'],
+                'Morocco': ['GMME', 'DAZZ'],
+                'Tunisia': ['DTTP'],
+                'Nigeria': ['DNKA'],
+                'Ghana': ['GQNB'],
+                'Senegal': ['DADC'],
+                'Kenya': ['HKJK'],
+                'Tanzania': ['HTZA'],
+                'Malawi': ['FVLL', 'FLLW'],
+                'S. Africa': ['FAOR', 'FACT'],
+                'Zambia': ['FDZI'],
+            },
+            'Oceania': {
+                'Australia': ['YSSY', 'YMML', 'YBBN', 'YPER', 'YDLH'],
+                'New Zealand': ['NZAA', 'NZCH', 'NZWN'],
+                'Pacific': ['PHNL', 'NFFN', 'NSSI'],
+            },
+        };
+
+        function showRegion(button, region) {
+            const container = document.getElementById('airportContainer');
+            container.innerHTML = '';
+
+            // Update active tab
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+
+            // Display countries and airports
+            const countries = regions[region] || {};
+            for (const [country, codes] of Object.entries(countries)) {
+                const countryDiv = document.createElement('div');
+                countryDiv.className = 'country-section';
+                countryDiv.innerHTML = `<h4>${country}</h4>`;
+
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'airport-buttons';
+
+                codes.forEach(code => {
+                    const btn = document.createElement('button');
+                    btn.className = 'airport-btn';
+                    btn.textContent = code;
+                    btn.onclick = () => setAirport(code);
+                    buttonsDiv.appendChild(btn);
+                });
+
+                countryDiv.appendChild(buttonsDiv);
+                container.appendChild(countryDiv);
+            }
+        }
+
+        // Show North America by default
+        window.addEventListener('load', () => {
+            const firstTab = document.querySelector('.tab-btn');
+            if (firstTab) showRegion(firstTab, 'North America');
+        });
+    </script>
+</body>
+</html>
